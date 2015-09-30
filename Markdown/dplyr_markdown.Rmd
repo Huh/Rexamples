@@ -1,0 +1,149 @@
+---
+title: "RUMT Dplyr"
+author: "Josh Nowak"
+date: "September 30, 2015"
+output: html_document
+---
+
+The R package dplyr was written to simplify your life.  If you adopt the 
+conventions of the package your code will likely be quite a bit neater, 
+more efficient, faster and easier to read.  The package is not sliced bread,
+but it generally prevents us from adopting numerous syntaxes and styles within a 
+single script.
+
+A nice introduction (in the form of a vignette) can be found at [this link.](https://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html)
+
+The packages author, Hadley Wickham, likes to discuss the grammar of data.  The 
+analogy helps us think about how the package is organized.  We use verbs to do 
+things.  
+
+### Main Verbs
+1. filter (and slice)
+    + filters out the desired values or eliminates undesirable data, i.e. 
+    subsetting
+    + slice differs in that it allows one to select rows by position (e.g. 34)
+    + works on rows
+    + base R functions - subset, [
+2. arrange
+    + orders the data according to the values in one or more columns
+    + base R functions - order, sort
+3. select (rename)
+    + allows the user to select certain columns or delete them using a negative
+    sign
+    + works on columns
+    + base R functions - [, $
+4. distinct
+    + finds unique values within a column or tbl_df
+    + works on a column, columns or and entire tbl_df 
+    + base R functions - duplicated, unique
+5. mutate (transmute, mutate_each)
+    + changes the values within a column or adds a new column
+    + transmute is different in that it retains only the modified columns
+    + base R functions - replace, [
+6. summarise (summarise_each)
+    + computes summary statistics over some index or indices, multiple values
+    become one
+    + logical statements usually work within a column, but the effect is on the
+    entire tbl_df
+    + base R functions - tapply, loops
+7. sample_n (sample_frac)
+    + allows subsetting of data randomly by row or fraction of the whole
+    + works on the entire tbl_df by selecting certain rows
+    + base R functions - sample and [ or subset
+8. group_by (rowwise)
+    + groups your data by the values in one or more columns
+    + rowwise differs in that it groups each row as a unique entity
+    + works on columns
+    + base R functions - none, but similar things are accomplished using split
+    followed by lapply or simply a loop over unique values in a column
+9. do
+    + used to perform arbitrary computations (e.g. custom function) that can
+    return a tbl_df or any other R object, but if the result is not a data frame
+    the results will be stored in a list
+    + can work on any portion of the data or the entire tbl_df
+    + base R functions - typically this type of operation would be done using a
+    loop or a member of the apply family
+    
+In addition to the verbs we also have some helpers.
+
+### Helpers
+* n, count, n_distinct, tally
+* groups, group_inidices, group_size
+* lead, lag
+* nth, first, last
+
+
+#### New Class tbl_df
+dplyr introduces a new class of object called a tbl_df.  There is nothing you
+absolutely need to know about this class because from the user's perspective it
+is pretty well just a data frame with a few extra attributes and different print
+method.
+
+#### Databases
+dplyr has pretty extensive abilities to connect to databases, but they are 
+beyond the scope of this document.  I just want you to be aware that they exist.
+
+## Example
+
+Let us start by creating some data.
+
+```{r}
+x <- data.frame(ID = rep(letters[1:5], each = 3),
+                Sex = rep(sample(c("M", "F"), 5, replace = T), each = 3),
+                Status = 1,
+                Year = rep(2011:2015, each = 3))
+```
+
+We should discuss what was done above and why it worked.
+
+#### Excercises using dplyr
+
+* Do an operation that returns all the data from before 2013
+* Now return all the data in 2014
+* Now return the data for Males in 2014
+* Return the data for Males in 2014, but report only the number of observations
+of each animal
+* How many animals of each sex were surveyed in each year
+* What are the unique values of the ID column and how many observations per
+* Sort the result from the previous step in descending order
+* Change all the values of Status to 2 where Sex is Male
+
+#### Excercises part 2
+```{r}
+xx <- data.frame(ID = rep(letters[1:5], each = 3),
+                 Value = c(rnorm(14), NA),
+                 Year = rep(c(2010:2012), 5))
+```
+
+* What is the mean of Values for each ID
+* What is the mean of Value for each ID in 2011
+* What is the sum of Value by Year
+
+#### Excercises part 4
+In the vignette linked above there are many examples of using dplyr.  Here I 
+simply ask the questions that are answered in the vignette.  We are using a 
+dataset 'r ?nycflights13' contained in the package nycflights13.  Install and 
+then load the package before you try to work with the data.
+
+```r
+install.packages("nycflights13")
+library(nycflights13)
+head(flights)
+```
+
+* Subset the data to only those flights on January 1st
+* Subset to rows 6 through 9
+* Order the data by year, month and day
+* Order the data as before, but this time return the only the tail number 
+column and change the name to tail_nums
+* Now summarise the data by returning only the unique tail numbers
+* Find the unique combinations of origin and destination
+* Find the difference between the arrival delay and the depature delays
+* Do it again, but return a single result for each year
+* Randomly select 5 rows from the data
+
+* Return the number of flights by tail number along with the mean distance that
+plane travels and the average delay
+
+* Take the above data and subset to only those with more than 20 flights and
+flight distance less than 2000
