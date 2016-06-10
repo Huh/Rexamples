@@ -1,9 +1,10 @@
     
     require(sp)
     require(raster)
+    require(rgeos)
     require(rgdal)
     
-    ext_fun <- function(fldr, xy = fake_tran, cores = 1, ...){
+    ext_fun <- function(fldr, xy, ...){
       #  A function to build a data frame from a raster of fire intensity and 
       #   a spatial polygon object
       #  Takes a folder name where the folder contains both files and 
@@ -19,40 +20,9 @@
         layer = gsub(".shp", "", spnm)
       )
       
-      if(attributes(class(sp_obj))[[1]] == "sp"){
+      tran_fire <- over(sp_obj, xy)
       
-        #  Get raster
-        rnm <- list.files(fldr, pattern = "_dnbr.tif$")
-        
-        if(length(rnm) > 0){
-          r_obj <- try(raster(file.path(fldr, rnm)))
-        
-          #  Mask raster using sp_obj
-          mask_r <- try(mask(r_obj, sp_obj))
-          
-          ex_val <- try(extract(mask_r, xy))
-          
-          if(any(class(r_obj) == "try-error", class(mask_r) == "try-error",
-            class(ex_val) == "try-error")){
-            
-            out <- data.frame(
-              as.data.frame(sp_obj),
-              Intensity = -123456789            
-            )
-            
-          }else{
-            out <- data.frame(
-              as.data.frame(sp_obj),
-              Intensity = ex_val
-            )
-          }
-        }else{
-          out <- data.frame(
-            sp_obj,
-            Intensity = -123456789
-          )
-        }
-      }else{
+      if(is.na(tran_fire[1])){
         out <- data.frame(
           "Id" = NA,
           "Area" = NA,
@@ -64,10 +34,40 @@
           "StartMonth" = NA,
           "StartDay" = NA,
           "Confidence" = NA,
-          "Comment" = NA,
+          "Comment" = "no overlap",
+          "Transect" = xy$transect,
           "Intensity" = -123456789
         )
-      
+      }else{
+        #  Get raster
+        rnm <- list.files(fldr, pattern = "_dnbr.tif$")
+
+        r_obj <- try(raster(file.path(fldr, rnm)))
+
+        #  Mask raster using sp_obj
+        mask_r <- try(mask(r_obj, sp_obj))
+
+        ex_val <- try(unlist(extract(mask_r, xy)))
+
+        if(is.null(ex_val) | class(ex_val) == "try-error"){
+          
+          out <- data.frame(
+            as.data.frame(sp_obj),
+            Transect = xy$transect,
+            Intensity = -123456789
+          )
+          
+          out$Comment <- "processing failed"
+          
+        }else{
+        
+          out <- data.frame(
+            as.data.frame(sp_obj),
+            Transect = xy$transect,
+            Intensity = ex_val
+          )
+          
+        }
       }
     
     return(out)
@@ -79,13 +79,15 @@
     
     #  Get folder names
     fname <- file.path(base_dir, list.files(base_dir))
+    fname <- fname[!grepl("Transects", fname)]
     
     #  Create a fake location for testing  
-    fake_tran <- matrix(c(-1179312, 1505932), ncol = 2)
+    #fake_tran <- matrix(c(-1179312, 1505932), ncol = 2)
+    transect <- readOGR(dsn = file.path(base_dir), layer = "Transects")
     
     #  Loop over folders
     tst <- lapply(fname, function(x){
-      out <- try(ext_fun(x, fake_tran, 5)) 
+      out <- try(ext_fun(x, transect)) 
       #  write to file
       #  calculate summary stats
       #  do other stuff to make it smaller
