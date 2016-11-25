@@ -4,11 +4,11 @@
 ################################################################################
     require(dplyr)
 ################################################################################
-    #  Scenario:  We want to add the last two locations in January to the 
-    #   February data.  We also want to add the first two locations from March 
-    #   to the Feb data.  We want to write functions that work on some arbitrary
-    #   time definition so they can be used for months, weeks, years, etc.  The
-    #   functions should also work on Date and POSIXct classes seamlessly.
+    #  Scenario:  In general terms, we want to add n dates from some time period 
+    #   before, after or both to some focal data.  For example, we might want to
+    #   add the last two locations in January to February data.  We might also 
+    #   want to add the first two locations from March to the Feb data.  
+    #  The functions should also work on Date and POSIXct classes seamlessly.
     
     #  Create some data
     tel.data <- data.frame(
@@ -46,30 +46,39 @@
       #   subset it to the number of dates to add
       dtrng <- range(add_to %>% .[[date_colnm]], na.rm = T)
 
+      #  Count how many dates are before and after, mutate n if needed so we do
+      #   not subset out of bounds...only 3 dates before but we ask for 6
+      before_cnt <- sum(add_from %>% .[[date_colnm]] < dtrng[1], na.rm = T)
+      after_cnt <- sum(add_from %>% .[[date_colnm]] > dtrng[2], na.rm = T)
+      n1 <- min(n, before_cnt, na.rm = T)
+      if(n != n1 & any(when %in% c("before", "extend"))){
+        warning(paste(n, "dates requested before data, but only", n1, 
+          "available."))
+      }
+      n2 <- min(n, after_cnt, na.rm = T)
+      if(n != n1 & any(when %in% c("after", "extend"))){
+        warning(paste(n, "dates requested after data, but only", n2, 
+          "available."))
+      }
+
       #  If when is before or extend
       #  Conditional on some add dates < than mind being present so we don't 
       #   add NA's
-      if(
-        (when == "before" | when == "extend") & 
-        any(add_from %>% .[[date_colnm]] < dtrng[1], na.rm = T)
-      ){
+      if((when == "before" | when == "extend") & n1 > 0){
         before <- add_from %>%
           filter(.[,date_colnm] < dtrng[1]) %>%
           arrange_(date_colnm) %>%
-          .[(nrow(.) - (n - 1)):nrow(.),]
+          .[(nrow(.) - (n1 - 1)):nrow(.),]
       }
       
       #  If when is after or extend
       #  Conditional on some add dates > than dtrng[2] being present so we don't 
       #   add NA's
-      if(
-        (when == "after" | when == "extend") & 
-        any(add_from %>% .[[date_colnm]] > dtrng[2], na.rm = T)
-      ){
+      if((when == "after" | when == "extend") & n2 > 0){
         after <- add_from %>%
           filter(.[,date_colnm] > dtrng[2]) %>%
           arrange_(date_colnm) %>%
-          .[1:n,]
+          .[1:n2,]
       }
 
       #  Combine data sources
@@ -98,7 +107,8 @@
       "extend")
     #  Cool!!!
 ################################################################################
-    #  Create a new data set that will allow us to pad multiple periods
+    #  Create a new data set that will allow us to pad multiple period from a 
+    #   single animal
     collard <- data.frame(
       id = "deer1",
       date = as.Date(
